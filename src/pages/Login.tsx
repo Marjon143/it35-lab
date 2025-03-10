@@ -17,57 +17,83 @@ import {
   IonAlert,
   IonLabel,
   IonModal,
+  IonInputPasswordToggle,
+  IonToast
 } from '@ionic/react';
 
 const Login: React.FC = () => {
   const navigation = useIonRouter();
-  const [showRegister, setShowRegister] = useState(false); // Track whether the registration form is visible
+  const [showRegister, setShowRegister] = useState(false);
   const [showAlert, setShowAlert] = useState(false); // Control the alert visibility
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // Control login success modal visibility
-  const [username, setUsername] = useState(''); // Track username input
-  const [password, setPassword] = useState(''); // Track password input
-  const [loginError, setLoginError] = useState(false); // Control login error visibility
-  
-  // Track registration data
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showFillInfoModal, setShowFillInfoModal] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState(false);
   const [registeredUsername, setRegisteredUsername] = useState('');
   const [registeredPassword, setRegisteredPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState(''); // Track confirm password input
 
-  // Predefined valid credentials for validation (this could be from an API in real apps)
+  // Predefined valid credentials for validation
   const validUsername = 'user123';
   const validPassword = 'password123';
 
   const doLogin = () => {
-    // Use the registered credentials for login
-    if (username === registeredUsername && password === registeredPassword) {
-      setShowSuccessModal(true); // Show success modal
-      setLoginError(false); // Clear any previous error
+    if (!username || !password) {
+      setShowFillInfoModal(true);
     } else {
-      setLoginError(true); // Show error if credentials are incorrect
+      if (username === registeredUsername && password === registeredPassword) {
+        setShowSuccessModal(true);
+        setLoginError(false);
+        setShowToast(true);
+      } else {
+        setLoginError(true);
+      }
     }
   };
 
   const toggleRegisterForm = () => {
-    setShowRegister(!showRegister); // Toggle the registration form visibility
+    setShowRegister(!showRegister);
   };
 
   const handleRegister = () => {
-    // Store the registration data
-    setRegisteredUsername(username);
-    setRegisteredPassword(password);
-    setShowAlert(true); // Show the alert when user clicks the register button
+    // Validate if all fields are filled in the registration form
+    if (!username || !password || !confirmPassword) {
+      setShowAlert(true); // Show the alert if any field is empty
+    } else if (password !== confirmPassword) {
+      setShowAlert(true); // Show the alert if passwords don't match
+    } else {
+      // Store the registration data
+      setRegisteredUsername(username);
+      setRegisteredPassword(password);
+      setShowAlert(true); // Show the alert after successful registration
+      // Do not navigate to login page yet
+      // We will only navigate when the user clicks the "OK" button on the alert
+    }
   };
 
   const handleAlertConfirm = () => {
-    setShowAlert(false); // Hide the alert
-    setShowRegister(false); // Hide the registration form and go back to the login form
-    setUsername(''); // Clear username input
-    setPassword(''); // Clear password input
+    setShowAlert(false);
+    if (!username || !password || !confirmPassword || password !== confirmPassword) {
+      return; // Don't navigate if fields are not properly filled
+    }
+    setShowRegister(false);
+    setUsername('');
+    setPassword('');
+    setConfirmPassword(''); // Clear confirm password input
+    // Only navigate back to the login page when registration is complete
+    navigation.push('/login', 'back', 'replace');
   };
 
   const handleSuccessModalClose = () => {
-    setShowSuccessModal(false); // Close the success modal
-    // Navigate to the new page after login success
+    setShowSuccessModal(false);
     navigation.push('/it35-lab/app', 'forward', 'replace');
+  };
+
+  const handleFillInfoModalClose = () => {
+    setShowFillInfoModal(false);
   };
 
   return (
@@ -108,17 +134,17 @@ const Login: React.FC = () => {
                   <IonInput 
                     labelPlacement="floating" 
                     value={password} 
-                    type="password" 
+                    type={showPassword ? 'text' : 'password'} // Toggle password visibility
                     onIonChange={(e) => setPassword(e.detail.value!)} 
                   >
                     <div slot="label">
                       Password<IonText color="danger">(Required)</IonText>
                     </div>
+                    <IonInputPasswordToggle slot="end" onClick={() => setShowPassword(!showPassword)} />
                   </IonInput>
                 </IonItem>
               </IonList>
 
-              {/* Display error if login fails */}
               {loginError && (
                 <IonText color="danger">
                   <p>Incorrect username or password. Please try again.</p>
@@ -172,29 +198,30 @@ const Login: React.FC = () => {
                   <IonInput 
                     labelPlacement="floating" 
                     value={password} 
-                    type="password" 
+                    type={showPassword ? 'text' : 'password'} 
                     onIonChange={(e) => setPassword(e.detail.value!)} 
                   >
                     <div slot="label">
                       Password<IonText color="danger"></IonText>
                     </div>
+                    <IonInputPasswordToggle slot="end" onClick={() => setShowPassword(!showPassword)} />
                   </IonInput>
                 </IonItem>
 
                 <IonItem>
                   <IonInput 
                     labelPlacement="floating" 
-                    value={password} 
-                    type="password" 
-                    onIonChange={(e) => setPassword(e.detail.value!)} 
+                    value={confirmPassword} 
+                    type={showPassword ? 'text' : 'password'} 
+                    onIonChange={(e) => setConfirmPassword(e.detail.value!)} 
                   >
                     <div slot="label">
                       Confirm Password<IonText color="danger"></IonText>
                     </div>
+                    <IonInputPasswordToggle slot="end" onClick={() => setShowPassword(!showPassword)} />
                   </IonInput>
                 </IonItem>
               </IonList>
-
               <IonButton 
                 onClick={handleRegister} 
                 expand="full" 
@@ -207,7 +234,7 @@ const Login: React.FC = () => {
               <IonButton 
                 onClick={toggleRegisterForm} 
                 expand="full" 
-                style={{ marginTop: '10px', width: '80%' }}
+                style={{ marginTop: '10px' }} 
                 color="secondary"
               >
                 Back to Login
@@ -220,13 +247,12 @@ const Login: React.FC = () => {
         <IonAlert
           isOpen={showAlert}
           onDidDismiss={() => setShowAlert(false)}
-          header="Account Created"
-          message="You have successfully created an account. Please log in."
+          header="Please Fill in All Fields"
+          message="All fields are required. Please fill in all fields."
           buttons={[{
             text: 'OK',
             handler: handleAlertConfirm
-          }]}
-        />
+          }]}/>
 
         {/* Success Modal after Successful Login */}
         <IonModal isOpen={showSuccessModal} onDidDismiss={() => setShowSuccessModal(false)}>
@@ -237,6 +263,24 @@ const Login: React.FC = () => {
             </IonButton>
           </IonContent>
         </IonModal>
+
+        {/* Modal asking to fill in information */}
+        <IonModal isOpen={showFillInfoModal} onDidDismiss={handleFillInfoModalClose}>
+          <IonContent className="ion-padding">
+            <h2>Please Fill in All Fields</h2>
+            <IonButton expand="full" onClick={handleFillInfoModalClose}>
+              Close
+            </IonButton>
+          </IonContent>
+        </IonModal>
+
+        {/* Toast Message for successful login */}
+        <IonToast
+          isOpen={showToast}
+          message="Login successful! Redirecting to the dashboard..."
+          onDidDismiss={() => setShowToast(false)}
+          duration={3000}
+        />
       </IonContent>
     </IonPage>
   );
