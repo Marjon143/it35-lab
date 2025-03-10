@@ -111,7 +111,7 @@ const Login: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
           
           <IonAvatar style={{ marginBottom: '20px' }}>
-            <img alt="Silhouette of a person's head" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNt-Vy_I4LN6JZhvwnJpxoetaJP321ospbf_fxhzPABPv1k67JLDsQbammchNbmtep_H1RVS0-rq9_qqdpO8vYgA" />
+            <img alt="Silhouette of a person's head" src="" />
           </IonAvatar>
 
           {/* Conditionally render the login form or register form */}
