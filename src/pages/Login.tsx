@@ -69,22 +69,20 @@ const Login: React.FC = () => {
       setRegisteredUsername(username);
       setRegisteredPassword(password);
       setShowAlert(true); // Show the alert after successful registration
-      // Do not navigate to login page yet
-      // We will only navigate when the user clicks the "OK" button on the alert
     }
   };
 
   const handleAlertConfirm = () => {
-    setShowAlert(false);
-    if (!username || !password || !confirmPassword || password !== confirmPassword) {
-      return; // Don't navigate if fields are not properly filled
+    // Check if all fields are properly filled before navigating
+    if (username && password && confirmPassword && password === confirmPassword) {
+      // If valid, go back to the login page
+      setShowRegister(false);
+      setUsername('');
+      setPassword('');
+      setConfirmPassword(''); // Clear confirm password input
+      navigation.push('/login', 'back', 'replace');
     }
-    setShowRegister(false);
-    setUsername('');
-    setPassword('');
-    setConfirmPassword(''); // Clear confirm password input
-    // Only navigate back to the login page when registration is complete
-    navigation.push('/login', 'back', 'replace');
+    setShowAlert(false); // Close the alert regardless of the result
   };
 
   const handleSuccessModalClose = () => {
