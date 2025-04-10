@@ -13,6 +13,7 @@ import {
   IonCardSubtitle, 
   IonCardTitle 
 } from '@ionic/react';
+import FeedContainer from '../../components/FeedContainer';
 
 const Feed: React.FC = () => {
   return (
@@ -49,6 +50,7 @@ const Feed: React.FC = () => {
 
           {}
         </div>
+        <FeedContainer />
       </IonContent>
     </IonPage>
   );
