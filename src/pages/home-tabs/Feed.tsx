@@ -1,17 +1,11 @@
-import React from 'react';
 import { 
   IonButtons,
-  IonContent, 
-  IonHeader, 
-  IonMenuButton, 
-  IonPage, 
-  IonTitle, 
-  IonToolbar, 
-  IonCard, 
-  IonCardContent, 
-  IonCardHeader, 
-  IonCardSubtitle, 
-  IonCardTitle 
+    IonContent, 
+    IonHeader, 
+    IonMenuButton, 
+    IonPage, 
+    IonTitle, 
+    IonToolbar 
 } from '@ionic/react';
 import FeedContainer from '../../components/FeedContainer';
 
@@ -33,22 +27,9 @@ const Feed: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             height: '100%',
-            flexDirection: 'column',
-            gap: '20px', 
           }}
         >
-          <IonCard>
-            <img alt="Silhouette of mountains" src="https://nationaltoday.com/wp-content/uploads/2020/02/doggy-date-night.jpg" />
-            <IonCardHeader>
-              <IonCardTitle>Tanly</IonCardTitle>
-              <IonCardSubtitle>Cutie</IonCardSubtitle>
-            </IonCardHeader>
-            <IonCardContent>
-              pagka lovely sa doggy
-            </IonCardContent>
-          </IonCard>
-
-          {}
+          Feed
         </div>
         <FeedContainer />
       </IonContent>
