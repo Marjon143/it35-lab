@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton, IonInput, IonLabel, IonModal, IonFooter, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonAlert, IonText } from '@ionic/react';
+import {
+  IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton, IonInput, IonLabel, IonModal, IonFooter, IonCard,
+  IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonAlert, IonText, IonAvatar
+} from '@ionic/react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabaseClient';
 
@@ -7,6 +10,7 @@ interface Post {
   post_id: string;
   user_id: number;
   username: string;
+  avatar_url: string;  // Add avatar_url to the Post interface
   post_content: string;
   post_created_at: string;
   post_updated_at: string;
@@ -28,19 +32,21 @@ const FeedContainer = () => {
         setUser(authData.user);
         const { data: userData, error } = await supabase
           .from('users')
-          .select('user_id, username')
+          .select('user_id, username, avatar_url')  // Fetch avatar_url
           .eq('user_email', authData.user.email)
           .single();
         if (!error && userData) {
-          setUser({ ...authData.user, id: userData.user_id });
+          setUser({ ...authData.user, id: userData.user_id, user_avatar_url: userData.avatar_url });
           setUsername(userData.username);
         }
       }
     };
+
     const fetchPosts = async () => {
       const { data, error } = await supabase.from('posts').select('*').order('post_created_at', { ascending: false });
       if (!error) setPosts(data as Post[]);
     };
+
     fetchUser();
     fetchPosts();
   }, []);
@@ -104,14 +110,18 @@ const FeedContainer = () => {
               {posts.map(post => (
                 <IonCard key={post.post_id}>
                   <IonCardHeader>
+                    {/* Display User Avatar */}
+                    <IonAvatar>
+                      <img src={post.avatar_url || '/assets/default-avatar.png'} alt="User Avatar" />
+                    </IonAvatar>
                     <IonCardTitle>{post.username}</IonCardTitle>
                     <IonCardSubtitle>{new Date(post.post_created_at).toLocaleString()}</IonCardSubtitle>
                   </IonCardHeader>
-                 <IonCardContent>
-                 <IonText color="secondary">
-                    <h1>{post.post_content}</h1>
-                  </IonText>
-                 </IonCardContent>
+                  <IonCardContent>
+                    <IonText color="secondary">
+                      <h1>{post.post_content}</h1>
+                    </IonText>
+                  </IonCardContent>
                   <IonFooter>
                     <IonButton fill="clear" onClick={() => startEditingPost(post)}>Edit</IonButton>
                     <IonButton fill="clear" color="danger" onClick={() => deletePost(post.post_id)}>Delete</IonButton>
