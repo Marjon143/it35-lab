@@ -60,7 +60,7 @@ interface Post {
   post_id: string;
   user_id: number;
   username: string;
-  avatar_url: string;  // Ensure this is included
+  avatar_url: string;
   post_content: string;
   post_created_at: string;
   post_updated_at: string;
@@ -78,13 +78,13 @@ const FeedContainer = () => {
   useEffect(() => {
     const fetchUser = async () => {
       const { data: authData } = await supabase.auth.getUser();
-      console.log("Auth Data:", authData); // Debug log to check the fetched auth data
+      console.log("Auth Data:", authData);
 
       if (authData?.user?.email?.endsWith('@nbsc.edu.ph')) {
         setUser(authData.user);
         const { data: userData, error } = await supabase
           .from('users')
-          .select('user_id, username, user_avatar_url') // Correct column names
+          .select('user_id, username, user_avatar_url')
           .eq('user_email', authData.user.email)
           .single();
 
@@ -96,7 +96,7 @@ const FeedContainer = () => {
           setUser({
             ...authData.user,
             id: userData.user_id,
-            user_avatar_url: userData.user_avatar_url || '/assets/default-avatar.png' // Set avatar URL
+            user_avatar_url: userData.user_avatar_url || '/assets/default-avatar.png'
           });
           setUsername(userData.username);
         }
@@ -123,9 +123,9 @@ const FeedContainer = () => {
   }, []);
 
   const createPost = async () => {
-    console.log("Post Content:", postContent);  // Log post content for debugging
-    console.log("User:", user);  // Log user object
-    console.log("Username:", username);  // Log username
+    console.log("Post Content:", postContent);
+    console.log("User:", user);
+    console.log("Username:", username);
 
     if (!postContent || !user || !username) {
       console.log("Missing data for creating post.");
@@ -138,15 +138,15 @@ const FeedContainer = () => {
         post_content: postContent,
         user_id: user.id,
         username,
-        avatar_url: user.user_avatar_url || '/assets/default-avatar.png' // Ensure avatar_url is added here
+        avatar_url: user.user_avatar_url || '/assets/default-avatar.png'
       }])
       .select('*');
 
     if (error) {
       console.error("Error creating post:", error);
     } else {
-      console.log("Post created:", data);  // Log the response from Supabase
-      setPosts(prevPosts => [data[0] as Post, ...prevPosts]);  // Add the new post at the beginning
+      console.log("Post created:", data);
+      setPosts(prevPosts => [data[0] as Post, ...prevPosts]);
       setPostContent('');
     }
   };
@@ -185,7 +185,14 @@ const FeedContainer = () => {
 
   return (
     <IonApp>
-      <IonPage>
+      <IonPage
+        style={{
+          backgroundImage: 'url(https://example.com/your-image.jpg)',  // Replace with your actual image URL
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          minHeight: '100vh',
+        }}
+      >
         <IonHeader>
           <IonToolbar>
             <IonTitle>Posts</IonTitle>
@@ -217,7 +224,6 @@ const FeedContainer = () => {
                         <IonRow style={styles.postCardHeaderRow}>
                           <IonCol size="auto">
                             <IonAvatar style={styles.postCardAvatar}>
-                              {/* Render the user avatar or fallback to a default avatar */}
                               <img 
                                 src={post.avatar_url || '/assets/default-avatar.png'} 
                                 alt="User Avatar" 
