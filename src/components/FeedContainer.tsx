@@ -60,7 +60,7 @@ interface Post {
   post_id: string;
   user_id: number;
   username: string;
-  avatar_url: string;
+  avatar_url: string;  // Ensure this is included
   post_content: string;
   post_created_at: string;
   post_updated_at: string;
@@ -79,22 +79,38 @@ const FeedContainer = () => {
     const fetchUser = async () => {
       const { data: authData } = await supabase.auth.getUser();
       console.log("Auth Data:", authData); // Debug log to check the fetched auth data
+
       if (authData?.user?.email?.endsWith('@nbsc.edu.ph')) {
         setUser(authData.user);
         const { data: userData, error } = await supabase
           .from('users')
-          .select('user_id, username, avatar_url')
+          .select('user_id, username, user_avatar_url') // Correct column names
           .eq('user_email', authData.user.email)
           .single();
-        if (!error && userData) {
-          setUser({ ...authData.user, id: userData.user_id, user_avatar_url: userData.avatar_url });
+
+        if (error) {
+          console.error("Error fetching user data:", error);
+        }
+
+        if (userData) {
+          setUser({
+            ...authData.user,
+            id: userData.user_id,
+            user_avatar_url: userData.user_avatar_url || '/assets/default-avatar.png' // Set avatar URL
+          });
           setUsername(userData.username);
         }
+      } else {
+        console.error('User does not have a valid email domain');
       }
     };
 
     const fetchPosts = async () => {
-      const { data, error } = await supabase.from('posts').select('*').order('post_created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('post_created_at', { ascending: false });
+
       if (error) {
         console.error('Error fetching posts:', error);
       } else {
@@ -118,7 +134,12 @@ const FeedContainer = () => {
 
     const { data, error } = await supabase
       .from('posts')
-      .insert([{ post_content: postContent, user_id: user.id, username }])
+      .insert([{
+        post_content: postContent,
+        user_id: user.id,
+        username,
+        avatar_url: user.user_avatar_url || '/assets/default-avatar.png' // Ensure avatar_url is added here
+      }])
       .select('*');
 
     if (error) {
@@ -157,6 +178,8 @@ const FeedContainer = () => {
       setEditingPost(null);
       setIsModalOpen(false);
       setIsAlertOpen(true);
+    } else {
+      console.error('Error saving post:', error);
     }
   };
 
@@ -176,10 +199,10 @@ const FeedContainer = () => {
                   <IonCardTitle style={styles.createPostCardTitle}>Create Post</IonCardTitle>
                 </IonCardHeader>
                 <IonCardContent>
-                  <IonInput 
-                    value={postContent} 
-                    onIonChange={e => setPostContent(e.detail.value!)} 
-                    placeholder="Write a post..." 
+                  <IonInput
+                    value={postContent}
+                    onIonChange={e => setPostContent(e.detail.value!)}
+                    placeholder="Write a post..."
                     clearInput
                   />
                   <IonButton expand="full" onClick={createPost}>Post</IonButton>
@@ -194,7 +217,11 @@ const FeedContainer = () => {
                         <IonRow style={styles.postCardHeaderRow}>
                           <IonCol size="auto">
                             <IonAvatar style={styles.postCardAvatar}>
-                              <img src={post.avatar_url || '/assets/default-avatar.png'} alt="User Avatar" />
+                              {/* Render the user avatar or fallback to a default avatar */}
+                              <img 
+                                src={post.avatar_url || '/assets/default-avatar.png'} 
+                                alt="User Avatar" 
+                              />
                             </IonAvatar>
                           </IonCol>
                           <IonCol>
