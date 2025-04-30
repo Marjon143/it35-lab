@@ -3,62 +3,16 @@ import {
   IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton, IonInput, IonLabel, IonModal, IonFooter, IonCard,
   IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonText, IonAvatar, IonRow, IonCol, IonAlert
 } from '@ionic/react';
-import { User } from '@supabase/supabase-js';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabaseClient';
 
-// Inline CSS-in-JS styles
-const styles = {
-  createPostCard: {
-    margin: '16px',
-  },
-  createPostCardHeader: {
-    backgroundColor: '#f4f4f4',
-    padding: '12px',
-  },
-  createPostCardTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-  },
-  postCard: {
-    margin: '12px 0',
-    padding: '16px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    borderRadius: '8px',
-  },
-  postCardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  postCardHeaderRow: {
-    alignItems: 'center',
-  },
-  postCardAvatar: {
-    marginRight: '12px',
-  },
-  postCardTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-  },
-  postCardSubtitle: {
-    fontSize: '12px',
-    color: '#888',
-  },
-  postsContainer: {
-    marginTop: '16px',
-  },
-  buttonClear: {
-    fontSize: '14px',
-    padding: '6px 12px',
-  },
-  cardContentText: {
-    fontSize: '16px',
-    color: '#333',
-  },
-};
+interface ExtendedUser extends SupabaseUser {
+  user_avatar_url?: string;
+}
 
 interface Post {
   post_id: string;
-  user_id: number;
+  user_id: string;
   username: string;
   avatar_url: string;
   post_content: string;
@@ -70,7 +24,7 @@ const FeedContainer = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -78,14 +32,13 @@ const FeedContainer = () => {
   useEffect(() => {
     const fetchUser = async () => {
       const { data: authData } = await supabase.auth.getUser();
-      console.log("Auth Data:", authData);
+      const authUser = authData?.user;
 
-      if (authData?.user?.email?.endsWith('@nbsc.edu.ph')) {
-        setUser(authData.user);
+      if (authUser?.email?.endsWith('@nbsc.edu.ph')) {
         const { data: userData, error } = await supabase
           .from('users')
           .select('user_id, username, user_avatar_url')
-          .eq('user_email', authData.user.email)
+          .eq('user_email', authUser.email)
           .single();
 
         if (error) {
@@ -93,11 +46,12 @@ const FeedContainer = () => {
         }
 
         if (userData) {
-          setUser({
-            ...authData.user,
+          const extendedUser: ExtendedUser = {
+            ...authUser,
             id: userData.user_id,
             user_avatar_url: userData.user_avatar_url || '/assets/default-avatar.png'
-          });
+          };
+          setUser(extendedUser);
           setUsername(userData.username);
         }
       } else {
@@ -123,37 +77,47 @@ const FeedContainer = () => {
   }, []);
 
   const createPost = async () => {
-    console.log("Post Content:", postContent);
-    console.log("User:", user);
-    console.log("Username:", username);
-
-    if (!postContent || !user || !username) {
-      console.log("Missing data for creating post.");
+    if (!postContent.trim()) {
+      console.log("Post content is empty.");
       return;
     }
+
+    if (!user) {
+      console.error("User is not logged in.");
+      return;
+    }
+
+    const currentUsername = username || 'Unknown User';
+    const avatar = user.user_avatar_url || '/assets/default-avatar.png';
 
     const { data, error } = await supabase
       .from('posts')
       .insert([{
         post_content: postContent,
         user_id: user.id,
-        username,
-        avatar_url: user.user_avatar_url || '/assets/default-avatar.png'
+        username: currentUsername,
+        avatar_url: avatar,
       }])
       .select('*');
 
     if (error) {
-      console.error("Error creating post:", error);
-    } else {
-      console.log("Post created:", data);
+      console.error("Error creating post:", error.message);
+    } else if (data && data.length > 0) {
       setPosts(prevPosts => [data[0] as Post, ...prevPosts]);
       setPostContent('');
+      console.log("Post created successfully!");
     }
   };
 
   const deletePost = async (post_id: string) => {
-    await supabase.from('posts').delete().match({ post_id });
-    setPosts(posts.filter(post => post.post_id !== post_id));
+    const { error } = await supabase.from('posts').delete().match({ post_id });
+
+    if (error) {
+      console.error("Error deleting post:", error.message);
+    } else {
+      setPosts(posts.filter(post => post.post_id !== post_id));
+      console.log("Post deleted successfully.");
+    }
   };
 
   const startEditingPost = (post: Post) => {
@@ -163,36 +127,36 @@ const FeedContainer = () => {
   };
 
   const savePost = async () => {
-    if (!postContent || !editingPost) return;
+    if (!postContent.trim() || !editingPost) {
+      console.warn("Post content is empty or no post selected for editing.");
+      return;
+    }
 
     const { data, error } = await supabase
       .from('posts')
-      .update({ post_content: postContent })
+      .update({
+        post_content: postContent,
+        post_updated_at: new Date().toISOString()
+      })
       .match({ post_id: editingPost.post_id })
       .select('*');
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       const updatedPost = data[0] as Post;
-      setPosts(posts.map(post => (post.post_id === updatedPost.post_id ? updatedPost : post)));
+      setPosts(posts.map(post => post.post_id === updatedPost.post_id ? updatedPost : post));
       setPostContent('');
       setEditingPost(null);
       setIsModalOpen(false);
       setIsAlertOpen(true);
+      console.log("Post updated successfully.");
     } else {
-      console.error('Error saving post:', error);
+      console.error("Error updating post:", error?.message);
     }
   };
 
   return (
     <IonApp>
-      <IonPage
-        style={{
-          backgroundImage: 'url(https://example.com/your-image.jpg)',  // Replace with your actual image URL
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          minHeight: '100vh',
-        }}
-      >
+      <IonPage>
         <IonHeader>
           <IonToolbar>
             <IonTitle>Posts</IonTitle>
@@ -201,9 +165,9 @@ const FeedContainer = () => {
         <IonContent>
           {user ? (
             <>
-              <IonCard style={styles.createPostCard}>
-                <IonCardHeader style={styles.createPostCardHeader}>
-                  <IonCardTitle style={styles.createPostCardTitle}>Create Post</IonCardTitle>
+              <IonCard>
+                <IonCardHeader>
+                  <IonCardTitle>Create Post</IonCardTitle>
                 </IonCardHeader>
                 <IonCardContent>
                   <IonInput
@@ -216,29 +180,26 @@ const FeedContainer = () => {
                 </IonCardContent>
               </IonCard>
 
-              <IonRow style={styles.postsContainer}>
+              <IonRow>
                 {posts.map(post => (
-                  <IonCol size="12" sizeMd="6" key={post.post_id}>
-                    <IonCard style={styles.postCard}>
-                      <IonCardHeader style={styles.postCardHeader}>
-                        <IonRow style={styles.postCardHeaderRow}>
+                  <IonCol size="12" key={post.post_id}>
+                    <IonCard>
+                      <IonCardHeader>
+                        <IonRow>
                           <IonCol size="auto">
-                            <IonAvatar style={styles.postCardAvatar}>
-                              <img 
-                                src={post.avatar_url || '/assets/default-avatar.png'} 
-                                alt="User Avatar" 
-                              />
+                            <IonAvatar>
+                              <img src={post.avatar_url || '/assets/default-avatar.png'} alt="User Avatar" />
                             </IonAvatar>
                           </IonCol>
                           <IonCol>
-                            <IonCardTitle style={styles.postCardTitle}>{post.username}</IonCardTitle>
-                            <IonCardSubtitle style={styles.postCardSubtitle}>{new Date(post.post_created_at).toLocaleString()}</IonCardSubtitle>
+                            <IonCardTitle>{post.username}</IonCardTitle>
+                            <IonCardSubtitle>{new Date(post.post_created_at).toLocaleString()}</IonCardSubtitle>
                           </IonCol>
                         </IonRow>
                       </IonCardHeader>
                       <IonCardContent>
                         <IonText color="secondary">
-                          <h1 style={styles.cardContentText}>{post.post_content}</h1>
+                          <h1>{post.post_content}</h1>
                         </IonText>
                       </IonCardContent>
                       <IonFooter>
