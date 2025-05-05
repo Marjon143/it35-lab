@@ -1,8 +1,13 @@
+// FeedContainer.tsx (Journal App with core features)
 import { useState, useEffect } from 'react';
 import {
-  IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton, IonInput, IonLabel, IonModal, IonFooter, IonCard,
-  IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonText, IonAvatar, IonRow, IonCol, IonAlert
+  IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButton, IonLabel,
+  IonModal, IonFooter, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle,
+  IonCardTitle, IonText, IonAvatar, IonRow, IonCol, IonAlert, IonInput, IonSelect,
+  IonSelectOption
 } from '@ionic/react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabaseClient';
 
@@ -18,6 +23,10 @@ interface Post {
   post_content: string;
   post_created_at: string;
   post_updated_at: string;
+  tags?: string[];
+  mood?: string;
+  prompt?: string;
+  media_url?: string;
 }
 
 const FeedContainer = () => {
@@ -28,23 +37,26 @@ const FeedContainer = () => {
   const [username, setUsername] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [mood, setMood] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: authData } = await supabase.auth.getUser();
       const authUser = authData?.user;
-
+  
       if (authUser?.email?.endsWith('@nbsc.edu.ph')) {
         const { data: userData, error } = await supabase
           .from('users')
           .select('user_id, username, user_avatar_url')
           .eq('user_email', authUser.email)
           .single();
-
-        if (error) {
-          console.error("Error fetching user data:", error);
-        }
-
+  
+        if (error) console.error("Error fetching user data:", error);
+  
         if (userData) {
           const extendedUser: ExtendedUser = {
             ...authUser,
@@ -58,66 +70,69 @@ const FeedContainer = () => {
         console.error('User does not have a valid email domain');
       }
     };
-
+  
     const fetchPosts = async () => {
+      if (!user) return;
+  
       const { data, error } = await supabase
         .from('posts')
         .select('*')
+        .eq('user_id', user.id) // Filter posts by the logged-in user's ID
         .order('post_created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching posts:', error);
-      } else {
-        setPosts(data as Post[]);
-      }
+  
+      if (error) console.error('Error fetching posts:', error);
+      else setPosts(data as Post[]);
     };
-
+  
     fetchUser();
     fetchPosts();
-  }, []);
+  }, [user]); // Ensure to re-fetch posts when user data changes
+  
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const { data, error } = await supabase.storage
+      .from('media')
+      .upload(`journal/${Date.now()}-${file.name}`, file);
+
+    if (error) console.error('Upload error:', error.message);
+    else {
+      const url = supabase.storage.from('media').getPublicUrl(data.path).data.publicUrl;
+      setMediaUrl(url);
+    }
+  };
 
   const createPost = async () => {
-    if (!postContent.trim()) {
-      console.log("Post content is empty.");
-      return;
-    }
-
-    if (!user) {
-      console.error("User is not logged in.");
-      return;
-    }
-
-    const currentUsername = username || 'Unknown User';
-    const avatar = user.user_avatar_url || '/assets/default-avatar.png';
+    if (!postContent.trim()) return;
+    if (!user) return;
 
     const { data, error } = await supabase
       .from('posts')
       .insert([{
         post_content: postContent,
         user_id: user.id,
-        username: currentUsername,
-        avatar_url: avatar,
+        username: username || 'Unknown User',
+        avatar_url: user.user_avatar_url || '/assets/default-avatar.png',
+        tags,
+        mood,
+        prompt,
+        media_url: mediaUrl
       }])
       .select('*');
 
-    if (error) {
-      console.error("Error creating post:", error.message);
-    } else if (data && data.length > 0) {
-      setPosts(prevPosts => [data[0] as Post, ...prevPosts]);
-      setPostContent('');
-      console.log("Post created successfully!");
+    if (!error && data && data.length > 0) {
+      setPosts(prev => [data[0] as Post, ...prev]);
+      setPostContent(''); setTags([]); setMood(''); setPrompt(''); setMediaUrl(null);
+    } else {
+      console.error("Error creating post:", error?.message);
     }
   };
 
   const deletePost = async (post_id: string) => {
     const { error } = await supabase.from('posts').delete().match({ post_id });
-
-    if (error) {
-      console.error("Error deleting post:", error.message);
-    } else {
-      setPosts(posts.filter(post => post.post_id !== post_id));
-      console.log("Post deleted successfully.");
-    }
+    if (!error) setPosts(posts.filter(p => p.post_id !== post_id));
   };
 
   const startEditingPost = (post: Post) => {
@@ -127,10 +142,7 @@ const FeedContainer = () => {
   };
 
   const savePost = async () => {
-    if (!postContent.trim() || !editingPost) {
-      console.warn("Post content is empty or no post selected for editing.");
-      return;
-    }
+    if (!postContent.trim() || !editingPost) return;
 
     const { data, error } = await supabase
       .from('posts')
@@ -143,23 +155,22 @@ const FeedContainer = () => {
 
     if (!error && data && data.length > 0) {
       const updatedPost = data[0] as Post;
-      setPosts(posts.map(post => post.post_id === updatedPost.post_id ? updatedPost : post));
-      setPostContent('');
-      setEditingPost(null);
-      setIsModalOpen(false);
-      setIsAlertOpen(true);
-      console.log("Post updated successfully.");
-    } else {
-      console.error("Error updating post:", error?.message);
+      setPosts(posts.map(p => p.post_id === updatedPost.post_id ? updatedPost : p));
+      setPostContent(''); setEditingPost(null); setIsModalOpen(false); setIsAlertOpen(true);
     }
   };
+
+  const filteredPosts = posts.filter(post =>
+    post.post_content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (post.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+  );
 
   return (
     <IonApp>
       <IonPage>
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Posts</IonTitle>
+            <IonTitle>My Journal</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent>
@@ -167,21 +178,26 @@ const FeedContainer = () => {
             <>
               <IonCard>
                 <IonCardHeader>
-                  <IonCardTitle>Create Post</IonCardTitle>
+                  <IonCardTitle>Create Entry</IonCardTitle>
                 </IonCardHeader>
                 <IonCardContent>
-                  <IonInput
-                    value={postContent}
-                    onIonChange={e => setPostContent(e.detail.value!)}
-                    placeholder="Write a post..."
-                    clearInput
-                  />
+                  <ReactQuill value={postContent} onChange={setPostContent} />
+                  <IonInput placeholder="Tags (comma-separated)" onIonChange={e => setTags(e.detail.value?.split(',').map(t => t.trim()) || [])} />
+                  <IonInput placeholder="Mood (e.g., Happy, Anxious)" onIonChange={e => setMood(e.detail.value!)} />
+                  <IonSelect placeholder="Choose a Prompt" onIonChange={e => setPrompt(e.detail.value)}>
+                    <IonSelectOption value="">No Prompt</IonSelectOption>
+                    <IonSelectOption value="What made you smile today?">What made you smile today?</IonSelectOption>
+                    <IonSelectOption value="What did you learn today?">What did you learn today?</IonSelectOption>
+                  </IonSelect>
+                  <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} />
                   <IonButton expand="full" onClick={createPost}>Post</IonButton>
                 </IonCardContent>
               </IonCard>
 
+              <IonInput placeholder="Search posts..." onIonChange={e => setSearchTerm(e.detail.value!)} />
+
               <IonRow>
-                {posts.map(post => (
+                {filteredPosts.map(post => (
                   <IonCol size="12" key={post.post_id}>
                     <IonCard>
                       <IonCardHeader>
@@ -198,9 +214,11 @@ const FeedContainer = () => {
                         </IonRow>
                       </IonCardHeader>
                       <IonCardContent>
-                        <IonText color="secondary">
-                          <h1>{post.post_content}</h1>
-                        </IonText>
+                        <IonText color="secondary"><div dangerouslySetInnerHTML={{ __html: post.post_content }} /></IonText>
+                        {post.media_url && <img src={post.media_url} alt="media" style={{ width: '100%', marginTop: '1em' }} />}
+                        <p><strong>Mood:</strong> {post.mood}</p>
+                        <p><strong>Tags:</strong> {post.tags?.join(', ')}</p>
+                        {post.prompt && <p><strong>Prompt:</strong> {post.prompt}</p>}
                       </IonCardContent>
                       <IonFooter>
                         <IonButton fill="clear" onClick={() => startEditingPost(post)}>Edit</IonButton>
@@ -217,13 +235,9 @@ const FeedContainer = () => {
         </IonContent>
 
         <IonModal isOpen={isModalOpen} onDidDismiss={() => setIsModalOpen(false)}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>Edit Post</IonTitle>
-            </IonToolbar>
-          </IonHeader>
+          <IonHeader><IonToolbar><IonTitle>Edit Entry</IonTitle></IonToolbar></IonHeader>
           <IonContent>
-            <IonInput value={postContent} onIonChange={e => setPostContent(e.detail.value!)} placeholder="Edit your post..." />
+            <ReactQuill value={postContent} onChange={setPostContent} />
           </IonContent>
           <IonFooter>
             <IonButton onClick={savePost}>Save</IonButton>

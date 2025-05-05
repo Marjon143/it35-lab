@@ -1,0 +1,56 @@
+.book-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem;
+    background: #fefcf8;
+  }
+  
+  .book-page {
+    background: #fff8dc;
+    border: 2px solid #d3c6a6;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
+    font-family: 'Georgia', serif;
+  }
+  
+  .page-header {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+  }
+  
+  .avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+  }
+  
+  .page-content {
+    margin-top: 1rem;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  
+  .media {
+    width: 100%;
+    margin-top: 1rem;
+    border-radius: 8px;
+  }
+  
+  .meta {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #555;
+  }
+  
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  

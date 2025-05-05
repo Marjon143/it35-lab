@@ -1,13 +1,5 @@
-import { 
-  IonButtons,
-  IonContent, 
-  IonHeader, 
-  IonMenuButton, 
-  IonPage, 
-  IonSearchbar, 
-  IonTitle, 
-  IonToolbar 
-} from '@ionic/react';
+import { IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import SearchContainer from '../../components/SearchContainer';
 
 const Search: React.FC = () => {
   return (
@@ -15,19 +7,9 @@ const Search: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonMenuButton />
+            <IonMenuButton></IonMenuButton>
           </IonButtons>
           <IonTitle>Search</IonTitle>
-        </IonToolbar>
-        <IonToolbar>
-          {/* Align the search bar to the left */}
-          <IonSearchbar 
-            style={{ 
-              width: '100%', 
-              marginLeft: '10px', // add some left margin to give a little space
-            }} 
-            debounce={0} 
-          />
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
@@ -41,6 +23,7 @@ const Search: React.FC = () => {
         >
           Search
         </div>
+        <SearchContainer />
       </IonContent>
     </IonPage>
   );
