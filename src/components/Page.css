@@ -1,0 +1,59 @@
+#journal-user-page {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+  
+  #journal-entries {
+    margin-top: 20px;
+  }
+  
+  .journal-entry {
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+  }
+  
+  .journal-entry h2 {
+    color: #2a9d8f;
+  }
+  
+  #add-entry {
+    margin-top: 40px;
+  }
+  
+  form input,
+  form textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  form button {
+    padding: 10px 15px;
+    background-color: #2a9d8f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  form button:hover {
+    background-color: #264653;
+  }
+  .entry-card {
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+  }
+  .entry-card {
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  
