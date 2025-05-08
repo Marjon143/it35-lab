@@ -16,6 +16,7 @@ interface Post {
   username: string;
   avatar_url: string;
   post_content: string;
+  post_topic: string;
   post_created_at: string;
   post_updated_at: string;
 }
@@ -23,6 +24,7 @@ interface Post {
 const FeedContainer = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
+  const [postTopic, setPostTopic] = useState('');
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -30,7 +32,7 @@ const FeedContainer = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndPosts = async () => {
       const { data: authData } = await supabase.auth.getUser();
       const authUser = authData?.user;
 
@@ -43,6 +45,7 @@ const FeedContainer = () => {
 
         if (error) {
           console.error("Error fetching user data:", error);
+          return;
         }
 
         if (userData) {
@@ -53,32 +56,31 @@ const FeedContainer = () => {
           };
           setUser(extendedUser);
           setUsername(userData.username);
+
+          // Fetch posts only from this user
+          const { data: postsData, error: postsError } = await supabase
+            .from('posts')
+            .select('*')
+            .eq('user_id', userData.user_id)
+            .order('post_created_at', { ascending: false });
+
+          if (postsError) {
+            console.error('Error fetching posts:', postsError);
+          } else {
+            setPosts(postsData as Post[]);
+          }
         }
       } else {
         console.error('User does not have a valid email domain');
       }
     };
 
-    const fetchPosts = async () => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('post_created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching posts:', error);
-      } else {
-        setPosts(data as Post[]);
-      }
-    };
-
-    fetchUser();
-    fetchPosts();
+    fetchUserAndPosts();
   }, []);
 
   const createPost = async () => {
-    if (!postContent.trim()) {
-      console.log("Post content is empty.");
+    if (!postContent.trim() || !postTopic.trim()) {
+      console.log("Post content or topic is empty.");
       return;
     }
 
@@ -94,6 +96,7 @@ const FeedContainer = () => {
       .from('posts')
       .insert([{
         post_content: postContent,
+        post_topic: postTopic,
         user_id: user.id,
         username: currentUsername,
         avatar_url: avatar,
@@ -105,6 +108,7 @@ const FeedContainer = () => {
     } else if (data && data.length > 0) {
       setPosts(prevPosts => [data[0] as Post, ...prevPosts]);
       setPostContent('');
+      setPostTopic('');
       console.log("Post created successfully!");
     }
   };
@@ -123,12 +127,13 @@ const FeedContainer = () => {
   const startEditingPost = (post: Post) => {
     setEditingPost(post);
     setPostContent(post.post_content);
+    setPostTopic(post.post_topic);
     setIsModalOpen(true);
   };
 
   const savePost = async () => {
-    if (!postContent.trim() || !editingPost) {
-      console.warn("Post content is empty or no post selected for editing.");
+    if (!postContent.trim() || !postTopic.trim() || !editingPost) {
+      console.warn("Post content/topic is empty or no post selected for editing.");
       return;
     }
 
@@ -136,6 +141,7 @@ const FeedContainer = () => {
       .from('posts')
       .update({
         post_content: postContent,
+        post_topic: postTopic,
         post_updated_at: new Date().toISOString()
       })
       .match({ post_id: editingPost.post_id })
@@ -145,6 +151,7 @@ const FeedContainer = () => {
       const updatedPost = data[0] as Post;
       setPosts(posts.map(post => post.post_id === updatedPost.post_id ? updatedPost : post));
       setPostContent('');
+      setPostTopic('');
       setEditingPost(null);
       setIsModalOpen(false);
       setIsAlertOpen(true);
@@ -171,6 +178,12 @@ const FeedContainer = () => {
                 </IonCardHeader>
                 <IonCardContent>
                   <IonInput
+                    value={postTopic}
+                    onIonChange={e => setPostTopic(e.detail.value!)}
+                    placeholder="Topic..."
+                    clearInput
+                  />
+                  <IonInput
                     value={postContent}
                     onIonChange={e => setPostContent(e.detail.value!)}
                     placeholder="Write a post..."
@@ -194,6 +207,7 @@ const FeedContainer = () => {
                           <IonCol>
                             <IonCardTitle>{post.username}</IonCardTitle>
                             <IonCardSubtitle>{new Date(post.post_created_at).toLocaleString()}</IonCardSubtitle>
+                            <IonCardSubtitle color="medium">Topic: {post.post_topic}</IonCardSubtitle>
                           </IonCol>
                         </IonRow>
                       </IonCardHeader>
@@ -223,7 +237,16 @@ const FeedContainer = () => {
             </IonToolbar>
           </IonHeader>
           <IonContent>
-            <IonInput value={postContent} onIonChange={e => setPostContent(e.detail.value!)} placeholder="Edit your post..." />
+            <IonInput
+              value={postTopic}
+              onIonChange={e => setPostTopic(e.detail.value!)}
+              placeholder="Edit topic..."
+            />
+            <IonInput
+              value={postContent}
+              onIonChange={e => setPostContent(e.detail.value!)}
+              placeholder="Edit your post..."
+            />
           </IonContent>
           <IonFooter>
             <IonButton onClick={savePost}>Save</IonButton>
