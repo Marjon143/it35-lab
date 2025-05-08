@@ -33,13 +33,13 @@ const Page: React.FC = () => {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [postTopic, setPostTopic] = useState<string>("");
   const [posts, setPosts] = useState<any[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [presentToast] = useIonToast();
 
-  const topics = ["Personal", "Work", "Ideas"];
-
   useEffect(() => {
     fetchPosts();
+    fetchTopics();
   }, [selectedTopic]);
 
   const fetchPosts = async () => {
@@ -70,6 +70,21 @@ const Page: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchTopics = async () => {
+    const { data, error } = await supabase
+      .from("posts")
+      .select("post_topic")
+      .neq("post_topic", null);
+
+    if (error) {
+      presentToast({ message: "Failed to load topics", duration: 2000, color: "danger" });
+      return;
+    }
+
+    const uniqueTopics = Array.from(new Set(data.map((post) => post.post_topic))).sort();
+    setTopics(uniqueTopics);
+  };
+
   const createPost = async () => {
     if (!postContent.trim() || !postTopic) {
       presentToast({ message: "Please enter content and choose a topic", duration: 2000, color: "warning" });
@@ -94,6 +109,7 @@ const Page: React.FC = () => {
       setPostTopic("");
       setIsModalOpen(false);
       fetchPosts();
+      fetchTopics();
     }
   };
 
